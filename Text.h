@@ -16,7 +16,7 @@ void scrollText(Adafruit_NeoMatrix* matrix, String text, ESPWiFi* wifi) {
   int len = text.length() * textPixelSize;
   for (int x = startX; x > -len; x--) {
     matrix->fillScreen(colorPallet[1]);
-    matrix->setCursor(x, 0);
+    matrix->setCursor(x, matrix->height() / 2 - 4);
     matrix->print(text);
     matrix->show();
     delay(100 - textSpeed);

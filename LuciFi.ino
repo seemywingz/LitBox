@@ -20,8 +20,8 @@
 // LED Pin D6
 
 // LED Matrix Config
-int LEDWidth = 32;
-int LEDHeight = 8;
+int LEDWidth = 16;
+int LEDHeight = 16;
 int ledDataPin = 12;  // LED Pin D6
 uint8_t matrixType =
     NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG;
@@ -36,7 +36,7 @@ int brightness = 6;
 // Visualization Config
 const int maxFrameRate = 120;
 unsigned int frameRate = 30;
-String visualization = "motion";
+String visualization = "stars";
 
 // temperature Config
 String temperatureUnit = "C";
@@ -54,17 +54,19 @@ void setup() {
   randomSeed(analogRead(A0));
   testMatrix(&matrix, LEDWidth, LEDHeight);
   initializeMotion(LEDWidth, LEDHeight);
-  // initializeWebServer();
+  initializeWebServer();
 }
 
 void loop() {
-  // wifi.handleClient();
+  wifi.handleClient();
   if (visualization == "waveform") {
     drawWaveform();
   } else if (visualization == "circles") {
     drawCircles();
   } else if (visualization == "motion") {
     drawMotion();
+  } else if (visualization == "stars") {
+    drawStars();
   } else if (visualization == "text") {
     displayOrScrollText(&matrix, text, &wifi);
   } else if (visualization == "birds") {
@@ -104,9 +106,9 @@ void drawBars() {
   for (int x = 0; x < LEDWidth; x++) {
     for (int y = 0; y < spectralData[x]; y++) {
       uint32_t pixelColor = colorPallet[0];
-      pixelColor = (y > 1) ? colorPallet[1] : pixelColor;
-      pixelColor = (y > 3) ? colorPallet[2] : pixelColor;
-      pixelColor = (y > 6) ? colorPallet[3] : pixelColor;
+      pixelColor = (y > LEDHeight * 0.25) ? colorPallet[1] : pixelColor;
+      pixelColor = (y > LEDHeight * 0.5) ? colorPallet[2] : pixelColor;
+      pixelColor = (y > LEDHeight * 0.75) ? colorPallet[3] : pixelColor;
       matrix.drawPixel(x, LEDHeight - 1 - y, pixelColor);
     }
   }
@@ -132,7 +134,7 @@ void drawCircles() {
     circleColor = (circleRadius > 3) ? colorPallet[2] : circleColor;
     circleColor = (circleRadius >= 4) ? colorPallet[3] : circleColor;
     if (circleRadius > 0) {
-      matrix.drawCircle(x, 4, circleRadius, circleColor);
+      matrix.drawCircle(x, LEDHeight / 2, circleRadius, circleColor);
     }
   }
   matrix.show();
@@ -149,6 +151,32 @@ void drawGameOfLife() {
     }
   }
   matrix.show();
+}
+
+void drawStar(int centerX, int centerY, int size, uint32_t color) {
+  // The angles for the 5 points of a star (in degrees)
+  float angles[5] = {18, -54, 234, 162, 90};
+
+  for (int i = 0; i < 5; i++) {
+    // Calculate the x and y coordinates for each point of the star
+    int x1 = centerX + size * cos(radians(angles[i]));
+    int y1 = centerY + size * sin(radians(angles[i]));
+    int x2 = centerX + size * cos(radians(angles[(i + 2) % 5]));
+    int y2 = centerY + size * sin(radians(angles[(i + 2) % 5]));
+
+    // Draw a line between each pair of points
+    matrix.drawLine(x1, y1, x2, y2, color);
+  }
+}
+
+void drawStars() {
+  for (int i = 0; i < LEDHeight; i++) {
+    matrix.fillScreen(0);
+    drawStar(LEDWidth / 2, LEDHeight / 2, i, YELLOW);
+    matrix.show();
+    delay(300);
+  }
+  delay(1000);
 }
 
 void drawStarPulse() {
@@ -172,13 +200,13 @@ void drawWaveform() {
     for (int y = 0; y < value; y++) {
       // Draw upwards from the middle
       uint32_t pixelColor = colorPallet[0];
-      if (y > 1) {
+      if (y > LEDHeight / 2 * 0.25) {  // 1/4 of the way up
         pixelColor = colorPallet[1];
       }
-      if (y > 2) {
+      if (y > LEDHeight / 2 * 0.5) {  // 1/2 of the way up
         pixelColor = colorPallet[2];
       }
-      if (y > 3) {
+      if (y > LEDHeight / 2 * 0.75) {  // 3/4 of the way up
         pixelColor = colorPallet[3];
       }
       matrix.drawPixel(x, middleY - y, pixelColor);
