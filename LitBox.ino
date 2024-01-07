@@ -9,6 +9,7 @@
 #include "GameofLife.h"
 #include "MatrixAnimation.h"
 #include "Motion.h"
+#include "Snake.h"
 #include "SpectralAnalyzer.h"
 #include "Stars.h"
 #include "Text.h"
@@ -33,13 +34,13 @@ const int maxBrightness = 255;
 const int minBrightness = 1;
 int brightness = 18;
 
+// temperature Config
+String temperatureUnit = "C";
+
 // Visualization Config
 const int maxFrameRate = 120;
 unsigned int frameRate = 60;
-String visualization = "bars";
-
-// temperature Config
-String temperatureUnit = "C";
+String visualization = "snake";
 
 // Web Server Config
 const String webServerName = "LitBox";
@@ -54,7 +55,7 @@ void setup() {
   randomSeed(analogRead(A0));
   initializeMatrix();
   initializeMotion(LEDWidth, LEDHeight);
-  initializeWebServer();
+  // initializeWebServer();
   loadColors();
 }
 
@@ -65,7 +66,7 @@ void initializeMatrix() {
 }
 
 void loop() {
-  wifi.handleClient();
+  // wifi.handleClient();
   if (visualization == "waveform") {
     drawWaveform();
   } else if (visualization == "circles") {
@@ -77,6 +78,8 @@ void loop() {
     // the stars are position locked and the movement of the board will
     // change the perspective of the stars, farther stars brightness will be dim
     // and closer stars will be brighter
+  } else if (visualization == "snake") {
+    runAtFrameRate(drawSnake, frameRate);
   } else if (visualization == "text") {
     displayOrScrollText(&matrix, text, &wifi);
   } else if (visualization == "birds") {
@@ -99,6 +102,18 @@ void drawTemperature() {
 }
 
 void drawMatrixAnimation() { matrixAnimation(&matrix, LEDWidth, LEDHeight); }
+
+void drawSnake() {
+  updateSnake(LEDWidth, LEDHeight, frameRate);
+  matrix.fillScreen(0);
+  SnakeNode* node = snakeHead;
+  while (node != nullptr) {
+    matrix.drawPixel(node->x, node->y, colorPallet[0]);
+    node = node->next;
+  }
+  matrix.drawPixel(snakeFood->x, snakeFood->y, snakeFood->color);
+  matrix.show();
+}
 
 void drawMotion() {
   motionAnimation(LEDWidth, LEDHeight, frameRate);
