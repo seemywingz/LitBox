@@ -1,6 +1,8 @@
 #ifndef COLORS_H
 #define COLORS_H
 
+#include <ArduinoJson.h>
+
 // Color definitions
 #define BLACK 0x0000
 #define BLUE 0x001F
@@ -24,15 +26,69 @@
 #define PEACH 0xFEA6
 
 struct Pixel {
-  float x, y;
-  float vx, vy;
-  byte intensity;
-  uint32_t color;
+  float x = 0, y = 0;
+  float vx = 0, vy = 0;
+  byte intensity = 0;
+  uint32_t color = 0;
 };
 
 const int palletSize = 4;
-uint32_t pixelColor = WHITE;  // Default color
+uint32_t pixelColor = WHITE;    // Default color
+uint32_t pixelBgColor = BLACK;  // Default background color
 uint32_t colorPallet[palletSize] = {BLUE, CYAN, VIOLET, WHITE};
+
+void saveColors() {
+  // Create a JSON document
+  StaticJsonDocument<256> doc;
+
+  // Add data to the document
+  JsonArray colorArray = doc.createNestedArray("colorPallet");
+  for (int i = 0; i < palletSize; i++) {
+    colorArray.add(colorPallet[i]);
+  }
+  doc["pixelColor"] = pixelColor;
+  doc["pixelBgColor"] = pixelBgColor;
+
+  // Open file for writing
+  File file = LittleFS.open("/config.json", "w");
+  if (!file) {
+    Serial.println("Failed to open config file for writing");
+    return;
+  }
+
+  // Serialize JSON to file
+  if (serializeJson(doc, file) == 0) {
+    Serial.println("Failed to write to file");
+  }
+
+  file.close();
+}
+
+void loadColors() {
+  // Open file for reading
+  File file = LittleFS.open("/config.json", "r");
+  if (!file) {
+    Serial.println("Failed to open config file for reading");
+    return;
+  }
+
+  // Deserialize JSON document
+  StaticJsonDocument<256> doc;
+  DeserializationError error = deserializeJson(doc, file);
+  if (error) {
+    Serial.print("Failed to read file, using default configuration");
+  }
+
+  // Read data from document
+  JsonArray colorArray = doc["colorPallet"];
+  for (int i = 0; i < palletSize; i++) {
+    colorPallet[i] = colorArray[i];
+  }
+  pixelColor = doc["pixelColor"];
+  pixelBgColor = doc["pixelBgColor"];
+
+  file.close();
+}
 
 String colorToHex(uint16_t rgb565) {
   // Extract RGB components

@@ -31,30 +31,37 @@ Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
 // Brightness and Color Config
 const int maxBrightness = 255;
 const int minBrightness = 1;
-int brightness = 6;
+int brightness = 18;
 
 // Visualization Config
 const int maxFrameRate = 120;
-unsigned int frameRate = 30;
-String visualization = "stars";
+unsigned int frameRate = 60;
+String visualization = "bars";
 
 // temperature Config
 String temperatureUnit = "C";
 
 // Web Server Config
-ESPWiFi wifi = ESPWiFi("Luci-Fi", "abcd1234");
+const String webServerName = "LitBox";
+ESPWiFi wifi = ESPWiFi("Lit Box", "abcd1234");
 
 void setup() {
   matrix.begin();
   Serial.begin(115200);
   while (!Serial) {
   };
-  matrix.setTextWrap(false);
-  matrix.setBrightness(brightness);
+  Serial.print("Lit Box starting up...");
   randomSeed(analogRead(A0));
-  testMatrix(&matrix, LEDWidth, LEDHeight);
+  initializeMatrix();
   initializeMotion(LEDWidth, LEDHeight);
   initializeWebServer();
+  loadColors();
+}
+
+void initializeMatrix() {
+  matrix.setTextWrap(false);
+  matrix.setBrightness(brightness);
+  testMatrix(&matrix, LEDWidth, LEDHeight);
 }
 
 void loop() {
@@ -65,8 +72,11 @@ void loop() {
     drawCircles();
   } else if (visualization == "motion") {
     drawMotion();
-  } else if (visualization == "stars") {
-    drawStars();
+  } else if (visualization == "starField") {
+    // the star field will be a 3D visualization
+    // the stars are position locked and the movement of the board will
+    // change the perspective of the stars, farther stars brightness will be dim
+    // and closer stars will be brighter
   } else if (visualization == "text") {
     displayOrScrollText(&matrix, text, &wifi);
   } else if (visualization == "birds") {
@@ -91,11 +101,12 @@ void drawTemperature() {
 void drawMatrixAnimation() { matrixAnimation(&matrix, LEDWidth, LEDHeight); }
 
 void drawMotion() {
-  motionAnimation(LEDWidth, LEDHeight);
+  motionAnimation(LEDWidth, LEDHeight, frameRate);
   matrix.fillScreen(0);
   for (int i = 0; i < motionNumObjects; i++) {
-    matrix.drawPixel(motionObjects[i].x, motionObjects[i].y,
-                     motionObjects[i].color);
+    Body* b = motionObjects[i].body;
+    matrix.drawRect(round(b->position.x), round(b->position.y), b->width.x,
+                    b->width.y, motionObjects[i].color);
   }
   matrix.show();
 }
@@ -142,7 +153,7 @@ void drawCircles() {
 
 void drawGameOfLife() {
   updateGameOfLife(LEDWidth, LEDHeight, 231);
-  matrix.fillScreen(0);
+  matrix.fillScreen(pixelBgColor);
   for (int x = 0; x < LEDWidth; x++) {
     for (int y = 0; y < LEDHeight; y++) {
       if (gol_Cells[x][y] == 1) {
@@ -338,45 +349,51 @@ void initializeWebServer() {
                             "color2=" + colorToHex(colorPallet[1]) + "\n" +
                             "color3=" + colorToHex(colorPallet[2]) + "\n" +
                             "color4=" + colorToHex(colorPallet[3]) + "\n" +
-                            "pixelColor=" + colorToHex(pixelColor) + "\n");
+                            "pixelColor=" + colorToHex(pixelColor) + "\n" +
+                            "pixelBgColor=" + colorToHex(pixelBgColor) + "\n");
   });
   wifi.webServer.on("/colors", HTTP_POST, []() {
     if (wifi.webServer.hasArg("color1")) {
-      String color = wifi.webServer.arg("color1");
       colorPallet[0] = hexToColor(wifi.webServer.arg("color1"));
     }
     if (wifi.webServer.hasArg("color2")) {
-      String color = wifi.webServer.arg("color2");
       colorPallet[1] = hexToColor(wifi.webServer.arg("color2"));
     }
     if (wifi.webServer.hasArg("color3")) {
-      String color = wifi.webServer.arg("color3");
       colorPallet[2] = hexToColor(wifi.webServer.arg("color3"));
     }
     if (wifi.webServer.hasArg("color4")) {
-      String color = wifi.webServer.arg("color4");
       colorPallet[3] = hexToColor(wifi.webServer.arg("color4"));
     }
     if (wifi.webServer.hasArg("pixelColor")) {
-      String color = wifi.webServer.arg("pixelColor");
       pixelColor = hexToColor(wifi.webServer.arg("pixelColor"));
     }
-    wifi.webServer.send(200, "text/plain",
-                        "Color Pallet set to: " + String(colorPallet[0]) +
-                            ", " + String(colorPallet[1]) + ", " +
-                            String(colorPallet[2]) + ", " +
-                            String(colorPallet[3]) + ", " + String(pixelColor));
+    if (wifi.webServer.hasArg("pixelBgColor")) {
+      pixelBgColor = hexToColor(wifi.webServer.arg("pixelBgColor"));
+    }
+    saveColors();
+    wifi.webServer.send(
+        200, "text/plain",
+        "Color Pallet set to:\n  Color 1:" + String(colorPallet[0]) +
+            ", Color 2:" + String(colorPallet[1]) + ", Color 3:" +
+            String(colorPallet[2]) + ", Color 4:" + String(colorPallet[3]) +
+            ", Pixel Color:" + String(pixelColor) +
+            ", Pixel BG Color:" + String(pixelBgColor));
   });
 
   wifi.webServer.on("/text", HTTP_GET, []() {
     wifi.webServer.send(
         200, "text/plain",
-        "text=" + text + "\n" + "textSpeed=" + String(textSpeed) + "\n");
+        "text=" + text + "\n" + "textSpeed=" + String(textSpeed) + "\n" +
+            "textColor=" + colorToHex(pixelColor) + "\n" + "textBgColor=" +
+            colorToHex(pixelBgColor) + "\n" + "textAnimation=scroll\n");
   });
   wifi.webServer.on("/text", HTTP_POST, []() {
     if (wifi.webServer.hasArg("textColor")) {
-      String color = wifi.webServer.arg("textColor");
-      pixelColor = hexToColor(color);
+      pixelColor = hexToColor(wifi.webServer.arg("textColor"));
+    }
+    if (wifi.webServer.hasArg("textBgColor")) {
+      pixelBgColor = hexToColor(wifi.webServer.arg("textBgColor"));
     }
     if (wifi.webServer.hasArg("textSpeed")) {
       textSpeed = wifi.webServer.arg("textSpeed").toInt();
@@ -435,6 +452,6 @@ void initializeWebServer() {
   });
 
   wifi.setConnectSubroutine([]() { testMatrix(&matrix, LEDWidth, LEDHeight); });
-  wifi.enableMDNS("luci-fi");
+  wifi.enableMDNS(webServerName);
   wifi.start();
 }
