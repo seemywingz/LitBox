@@ -12,6 +12,8 @@ SnakeNode* snakeHead = nullptr;
 SnakeNode* snakeTail = nullptr;
 Pixel* snakeFood = nullptr;
 int snakeLength = 0;
+int snakeDX = 0;
+int snakeDY = 0;
 
 void generateFood(int maxX, int maxY) {
   snakeFood = new Pixel;
@@ -54,63 +56,69 @@ void updateSnake(int maxX, int maxY, unsigned int& frameRate) {
   if (snakeLength == 0) {
     initSnake(maxX, maxY);
     frameRate = 3;
+    snakeDX = 1;
   }
 
   // Move the snake
   readAccelerometer();
-  for (int i = 0; i < snakeLength; i++) {
-    if (i == 0) {
-      // Move the head
-      snakeHead->x += -ay;
-      snakeHead->y += -ax;
-      snakeHead->x = round(snakeHead->x);
-      snakeHead->y = round(snakeHead->y);
-    } else {
-      // Move the body
-      SnakeNode* current = snakeHead;
-      for (int j = 0; j < i; j++) {
-        current = current->next;
-      }
-      current->x = current->next->x;
-      current->y = current->next->y;
+  float movementThreshold = 0.08;
+  if (snakeDX != 0) {
+    if (-ax > movementThreshold) {
+      snakeDX = 0;
+      snakeDY = 1;
+    } else if (-ax < -movementThreshold) {
+      snakeDX = 0;
+      snakeDY = -1;
+    }
+  } else if (snakeDY != 0) {
+    if (-ay > movementThreshold) {
+      snakeDX = 1;
+      snakeDY = 0;
+    } else if (-ay < -movementThreshold) {
+      snakeDX = -1;
+      snakeDY = 0;
     }
   }
+
+  int newX = snakeHead->x + snakeDX;
+  int newY = snakeHead->y + snakeDY;
 
   // Check if the snake has eaten food
-  if (snakeHead->x == snakeFood->x && snakeHead->y == snakeFood->y) {
-    // Snake has eaten food
+  if (newX == snakeFood->x && newY == snakeFood->y) {
+    // Add a new node at the current position of the tail
     addSnakeNode(snakeTail->x, snakeTail->y);
     generateFood(maxX, maxY);
-    frameRate += 5;
+    frameRate++;
   }
 
-  // Check if the snake is out of bounds
+  // Move each node to the position of the previous node, starting from the
+  // tail
+  SnakeNode* current = snakeTail;
+  while (current != snakeHead) {
+    SnakeNode* previous = snakeHead;
+    while (previous->next != current) {
+      previous = previous->next;
+    }
+    current->x = previous->x;
+    current->y = previous->y;
+    current = previous;
+  }
+
+  // Update the head position last
+  snakeHead->x = newX;
+  snakeHead->y = newY;
+
+  // Check if the snake is out of bounds and wrap around if necessary
   if (snakeHead->x < 0) {
     snakeHead->x = maxX - 1;
-  } else if (snakeHead->x > maxX) {
+  } else if (snakeHead->x >= maxX) {
     snakeHead->x = 0;
   }
-
   if (snakeHead->y < 0) {
     snakeHead->y = maxY - 1;
-  } else if (snakeHead->y > maxY) {
+  } else if (snakeHead->y >= maxY) {
     snakeHead->y = 0;
   }
-
-  // Check if the snake has collided with itself
-  SnakeNode* current = snakeHead->next;
-  while (current != nullptr) {
-    if (current->x == snakeHead->x && current->y == snakeHead->y) {
-      // Snake has collided with itself
-      // Reset the snake
-      while (snakeLength > 1) {
-        removeSnakeNode();
-        frameRate--;
-      }
-      break;
-    }
-    current = current->next;
-  }
-};
+}
 
 #endif  // !SNAKE_H
