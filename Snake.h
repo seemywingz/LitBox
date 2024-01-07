@@ -61,7 +61,7 @@ void updateSnake(int maxX, int maxY, unsigned int& frameRate) {
 
   // Move the snake
   readAccelerometer();
-  float movementThreshold = 0.08;
+  float movementThreshold = 0.09;
   if (snakeDX != 0) {
     if (-ax > movementThreshold) {
       snakeDX = 0;
@@ -88,11 +88,11 @@ void updateSnake(int maxX, int maxY, unsigned int& frameRate) {
     // Add a new node at the current position of the tail
     addSnakeNode(snakeTail->x, snakeTail->y);
     generateFood(maxX, maxY);
-    frameRate++;
+    // frameRate++;
   }
 
-  // Move each node to the position of the previous node, starting from the
-  // tail
+  // Move each node to the position of the previous node,
+  // starting from the tail
   SnakeNode* current = snakeTail;
   while (current != snakeHead) {
     SnakeNode* previous = snakeHead;
