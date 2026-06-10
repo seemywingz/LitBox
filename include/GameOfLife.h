@@ -1,7 +1,6 @@
 #ifndef GAMEOFLIFE_H
 #define GAMEOFLIFE_H
 
-#include <Arduino.h>
 
 int gol_Generations = 0;
 int** gol_Cells = nullptr;

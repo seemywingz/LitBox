@@ -2,32 +2,29 @@
   "name": "dashboard",
   "version": "0.1.0",
   "private": true,
-  "dependencies": {
-    "@mui/material": "^7.2.0",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
-  },
   "scripts": {
     "start": "BROWSER=none react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false BUILD_PATH='../data' react-scripts build",
+    "build": "GENERATE_SOURCEMAP=false BUILD_PATH='../data' react-scripts build && rm ../data/static/js/*.LICENSE.txt",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "pio:clean": "cd .. && pio run --target clean",
-    "pio:build": "cd .. && pio run --environment ${PIO_ENV:-esp32-c3}",
-    "pio:upload": "cd .. && pio run --target upload --environment ${PIO_ENV:-esp32-c3}",
-    "pio:monitor": "cd .. && pio device monitor",
-    "pio:uploadfs": "cd .. && pio run --target uploadfs --environment ${PIO_ENV:-esp32-c3}",
-    "pio:build:upload": "npm run pio:build && npm run pio:upload",
-    "pio:build:monitor": "npm run pio:build && npm run pio:monitor",
-    "pio:build:upload:monitor": "npm run pio:build && npm run pio:upload && npm run pio:monitor",
-    "build:uploadfs": "npm run build && npm run pio:uploadfs",
-    "build:uploadfs:monitor": "npm run build && npm run pio:uploadfs && npm run pio:monitor",
-    "build:uploadfs:pio:build:upload:monitor": "npm run build && npm run pio:uploadfs && npm run pio:build && npm run pio:upload && npm run pio:monitor"
+    "clean": " npm run cleanSDKConfig && cd .. && pio run -t clean",
+    "cleanSDKConfig": "../sdkconfigs/sdkconfig.sh",
+    "monitor": "cd .. && pio device monitor --filter esp32_exception_decoder",
+    "menuconfig": "cd .. && pio run -t menuconfig",
+    "upload": "npm run cleanSDKConfig && cd .. && pio run -t upload",
+    "upload:monitor": "clear && npm run upload && npm run monitor",
+    "uploadfs": "cd .. && pio run --target uploadfs",
+    "deploy": "npm run build && npm run uploadfs && npm run upload",
+    "deploy:monitor": "clear && npm run deploy && npm run monitor",
+    "clean:deploy": "npm run clean && npm run build && npm run uploadfs && npm run upload",
+    "clean:upload": "npm run clean && npm run upload",
+    "flash": "cd .. && pio run -e esp32-c3",
+    "flash:upload": "npm run flash && npm run upload",
+    "flash:monitor": "npm run flash && npm run upload && npm run monitor",
+    "secure:status": "cd .. && espefuse --port /dev/cu.usbmodem101 summary || echo 'Secure boot enabled (cannot read eFuse)'",
+    "secure:gen-key": "cd .. && espsecure generate-signing-key --version 2 --scheme ecdsa256 secure_boot/ecdsa_signing_key.pem",
+    "secure:verify": "cd .. && esptool --chip esp32c3 --port /dev/cu.usbmodem101 chip_id",
+    "helm:deploy": "helm upgrade --install espwifi-io ../espwifi.io -f ../espwifi.io/values.yaml --namespace espwifi-io --create-namespace"
   },
   "eslintConfig": {
     "rules": {
@@ -49,6 +46,19 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "dependencies": {
+    "@mui/material": "^7.2.0",
+    "@mui/icons-material": "^7.2.0",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^2.1.4"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.0"
